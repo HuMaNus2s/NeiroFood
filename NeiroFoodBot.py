@@ -52,8 +52,31 @@ def log(message=None, error=False, button=None):
         printt(f'Неизвестная команда <{message.text}>')
         logger.info(f'Неизвестная команда <{message.text}>')
 
-# Словарь для хранения корзин пользователей
-user_baskets = {}
+# Работа с корзинами пользователей
+def get_user_basket(user_id):
+    file_path = f'users/{user_id}.json'
+    if os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8') as file:
+            return json.load(file)
+    else:
+        return {}
+
+def save_user_basket(user_id, basket):
+    file_path = f'users/{user_id}.json'
+    if not os.path.exists('users'):
+        os.makedirs('users')
+    with open(file_path, 'w', encoding='utf-8') as file:
+        json.dump(basket, file, ensure_ascii=False, indent=4)
+
+burgers = ['Ангус ШЕФ',
+           'Двойной ВОППЕР',
+           'Родео Бургер',
+           'Цезарь КИНГ',
+           'ЦЭНСИ',
+           'Баварский бургер',
+           'Черная МАМБА',
+           'Зеленный ФРЕШ',
+           'Двойной Чизбургер']
 
 def back_button(call):
     keyboard = types.InlineKeyboardMarkup()
@@ -85,44 +108,38 @@ def menu_button():
     keyboard.row(back_button)
     return keyboard
 
-def button_for_burger(burger_name, quantity=1):
-    keyboard = types.InlineKeyboardMarkup()
-    basket_button = types.InlineKeyboardButton(f"{quantity} шт. | В корзину", callback_data=f'basket_{burger_name}_add')
-    minus_button = types.InlineKeyboardButton("-", callback_data=f'basket_{burger_name}_remove')
-    plus_button = types.InlineKeyboardButton("+", callback_data=f'basket_{burger_name}_add')
+def button_for_basket(burger_name, quantity=1):
+    keyboard = types.InlineKeyboardMarkup(row_width=3)
+    minus_button = types.InlineKeyboardButton("-", callback_data=f'basket_remove_{burger_name}')
+    basket_button = types.InlineKeyboardButton(f"{quantity} шт", callback_data='noop')
+    plus_button = types.InlineKeyboardButton("+", callback_data=f'basket_add_{burger_name}')
     back_button = types.InlineKeyboardButton("Назад", callback_data='neiro_burger')
-    keyboard.row(minus_button, basket_button, plus_button)
+    keyboard.add(minus_button, basket_button, plus_button)
+    keyboard.row(back_button)
+    return keyboard
+
+def button_for_burger(burger_name):
+    keyboard = types.InlineKeyboardMarkup()
+    basket_button = types.InlineKeyboardButton("Корзина", callback_data='basket')
+    back_button = types.InlineKeyboardButton("Назад", callback_data='neiro_burger')
+    keyboard.row(basket_button)
     keyboard.row(back_button)
     return keyboard
 
 def menu_neiro_burger():
     keyboard = types.InlineKeyboardMarkup()
-    button_angus_shef = types.InlineKeyboardButton("Ангус ШЕФ", callback_data='angus_shef')
-    button_double_vopper = types.InlineKeyboardButton("Двойной ВОППЕР", callback_data='double_vopper')
-    button_rodeo_burger = types.InlineKeyboardButton("Родео Бургер", callback_data='rodeo_burger')
-    button_cesar_king = types.InlineKeyboardButton("Цезарь КИНГ", callback_data='cesar_king')
-    button_censi = types.InlineKeyboardButton("ЦЭНСИ", callback_data='censi')
-    button_bavarskii_burger = types.InlineKeyboardButton("Баварский бургер", callback_data='bavarskii_burger')
-    button_black_mamba = types.InlineKeyboardButton("Черная МАМБА", callback_data='black_mamba')
-    button_green_fresh = types.InlineKeyboardButton("Зеленный ФРЕШ", callback_data='green_fresh')
-    button_double_cheeseburger = types.InlineKeyboardButton("Двойной Чизбургер", callback_data='double_cheeseburger')
+    for burger in burgers:
+        button = types.InlineKeyboardButton(burger, callback_data=burger)
+        keyboard.row(button)
     back_button = types.InlineKeyboardButton("Назад", callback_data='menu')
-    keyboard.row(button_angus_shef)
-    keyboard.row(button_double_vopper)
-    keyboard.row(button_rodeo_burger)
-    keyboard.row(button_cesar_king)
-    keyboard.row(button_censi)
-    keyboard.row(button_bavarskii_burger)
-    keyboard.row(button_black_mamba)
-    keyboard.row(button_green_fresh)
-    keyboard.row(button_double_cheeseburger)
     keyboard.row(back_button)
     return keyboard
 
 def display_basket(user_id):
-    if user_id in user_baskets and user_baskets[user_id]:
+    user_basket = get_user_basket(user_id)
+    if user_basket:
         basket_text = "Ваша корзина:\n\n"
-        for burger, quantity in user_baskets[user_id].items():
+        for burger, quantity in user_basket.items():
             basket_text += f"{burger}: {quantity} шт.\n"
         basket_text += "\nВы можете добавить или удалить бургеры."
     else:
@@ -131,10 +148,11 @@ def display_basket(user_id):
 
 def basket_button(user_id):
     keyboard = types.InlineKeyboardMarkup()
-    if user_id in user_baskets:
-        for burger, quantity in user_baskets[user_id].items():
-            minus_button = types.InlineKeyboardButton(f"- {burger}", callback_data=f'basket_{burger}_remove')
-            plus_button = types.InlineKeyboardButton(f"+ {burger}", callback_data=f'basket_{burger}_add')
+    user_basket = get_user_basket(user_id)
+    if user_basket:
+        for burger, quantity in user_basket.items():
+            minus_button = types.InlineKeyboardButton(f"- {burger}", callback_data=f'basket_remove_{burger}')
+            plus_button = types.InlineKeyboardButton(f"+ {burger}", callback_data=f'basket_add_{burger}')
             keyboard.row(minus_button, plus_button)
     back_button = types.InlineKeyboardButton("Назад", callback_data='menu')
     keyboard.row(back_button)
@@ -160,23 +178,17 @@ def handle_callback_query(call):
     user_id = call.from_user.id
     if call.data.startswith('basket_'):
         action, burger_name = call.data.split('_')[1], call.data.split('_')[2]
-        if user_id not in user_baskets:
-            user_baskets[user_id] = {}
+        user_basket = get_user_basket(user_id)
         if action == "add":
-            if burger_name in user_baskets[user_id]:
-                user_baskets[user_id][burger_name] += 1
-            else:
-                user_baskets[user_id][burger_name] = 1
+            user_basket[burger_name] = user_basket.get(burger_name, 0) + 1
         elif action == "remove":
-            if burger_name in user_baskets[user_id]:
-                if user_baskets[user_id][burger_name] > 1:
-                    user_baskets[user_id][burger_name] -= 1
+            if burger_name in user_basket:
+                if user_basket[burger_name] > 1:
+                    user_basket[burger_name] -= 1
                 else:
-                    del user_baskets[user_id][burger_name]
-        if action == "add":
-            bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=button_for_burger(burger_name, user_baskets[user_id][burger_name]))
-        elif action == "remove":
-            bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=button_for_burger(burger_name, user_baskets[user_id].get(burger_name, 0)))
+                    del user_basket[burger_name]
+        save_user_basket(user_id, user_basket)
+        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=button_for_basket(burger_name, user_basket.get(burger_name, 0)))
         log(call, False, call.data)
     elif call.data == 'about':
         text = '''НейроФуд - сеть ресторанов, где блюда готовят высококлассные повара с помощью новейших технологий.'''
@@ -212,72 +224,9 @@ def handle_callback_query(call):
         log(call, False, call.data)
     elif call.data == 'basket':
         text = display_basket(user_id)
-        photo_path = 'img/LogoNeiroFood.jpg'  # Вы можете заменить на подходящее изображение корзины
+        photo_path = 'img/LogoNeiroFood.jpg'
         media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
         bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=basket_button(user_id))
-        log(call, False, call.data)
-    elif call.data == 'angus_shef':
-        text = '''Ангус ШЕФ'''
-        photo_path = 'img/shef.png'
-        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
-        quantity = user_baskets.get(user_id, {}).get('angus_shef', 1)
-        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_burger('angus_shef', quantity))
-        log(call, False, call.data)
-    elif call.data == 'double_vopper':
-        text = '''Двойной ВОППЕР'''
-        photo_path = 'img/vopper.png'
-        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
-        quantity = user_baskets.get(user_id, {}).get('double_vopper', 1)
-        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_burger('double_vopper', quantity))    
-        log(call, False, call.data)
-    elif call.data == 'rodeo_burger':
-        text = '''Родео Бургер'''
-        photo_path = 'img/rodeo.png'
-        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
-        quantity = user_baskets.get(user_id, {}).get('rodeo_burger', 1)
-        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_burger('rodeo_burger', quantity))
-        log(call, False, call.data)
-    elif call.data == 'cesar_king':
-        text = '''Цезарь КИНГ'''
-        photo_path = 'img/cesar.png'
-        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
-        quantity = user_baskets.get(user_id, {}).get('cesar_king', 1)
-        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_burger('cesar_king', quantity))
-        log(call, False, call.data)
-    elif call.data == 'censi':
-        text = '''ЦЭНСИ'''
-        photo_path = 'img/censi.png'
-        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
-        quantity = user_baskets.get(user_id, {}).get('censi', 1)
-        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_burger('censi', quantity))
-        log(call, False, call.data)
-    elif call.data == 'bavarskii_burger':
-        text = '''Баварский бургер'''
-        photo_path = 'img/bavarskii.png'
-        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
-        quantity = user_baskets.get(user_id, {}).get('bavarskii_burger', 1)
-        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_burger('bavarskii_burger', quantity))     
-        log(call, False, call.data)
-    elif call.data == 'black_mamba':
-        text = '''Черная МАМБА'''
-        photo_path = 'img/mamba.png'
-        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
-        quantity = user_baskets.get(user_id, {}).get('black_mamba', 1)
-        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_burger('black_mamba', quantity))        
-        log(call, False, call.data)
-    elif call.data == 'green_fresh':
-        text = '''Зеленный ФРЕШ'''
-        photo_path = 'img/fresh.png'
-        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
-        quantity = user_baskets.get(user_id, {}).get('green_fresh', 1)
-        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_burger('green_fresh', quantity))    
-        log(call, False, call.data)
-    elif call.data == 'double_cheeseburger':
-        text = '''Двойной Чизбургер'''
-        photo_path = 'img/cheeseburger.png'
-        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
-        quantity = user_baskets.get(user_id, {}).get('double_cheeseburger', 1)
-        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_burger('double_cheeseburger', quantity))
         log(call, False, call.data)
     elif call.data == 'back':
         text = '''Привет! Я ваш личный ассистент NeiroFood!'''
@@ -285,7 +234,13 @@ def handle_callback_query(call):
         media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
         bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=menu_tool_button())
         log(call, False, call.data)
-
+    else:
+        if call.data in burgers:
+            photo_path = f'img/burgers/{call.data}.png'
+            media = types.InputMediaPhoto(open(photo_path, "rb"), caption=call.data, parse_mode="Markdown")
+            quantity = get_user_basket(user_id).get(call.data, 0)
+            bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_basket(call.data, quantity))
+            log(call, False, call.data)
 
 if __name__ == '__main__':
     try:
