@@ -192,11 +192,16 @@ def handle_callback_query(call):
         log(call, False, call.data)
     elif call.data == 'about':
         text = '''НейроФуд - сеть ресторанов, где блюда готовят высококлассные повара с помощью новейших технологий.'''
-        bot.edit_message_text(text, call.message.chat.id, call.message.id, reply_markup=menu_tool_button())
+        photo_path = 'img/AboutNeiroFood.jpg'
+        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
+        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=back_button('back'))
         log(call, False, call.data)
     elif call.data == 'FAQ':
-        text = '''Часто задаваемые вопросы:'''
-        bot.edit_message_text(text, call.message.chat.id, call.message.id, reply_markup=menu_tool_button())
+        text = '''Часто задаваемые вопросы: 
+nikitka.cum'''
+        photo_path = 'img/FAQNeiroFood.jpg'
+        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
+        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=back_button('back'))
         log(call, False, call.data)
     elif call.data == 'menu':
         text = '''Меню'''
