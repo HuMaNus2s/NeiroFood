@@ -1,4 +1,3 @@
-
 import os
 import telebot
 from telebot import types
@@ -71,47 +70,48 @@ def save_user_basket(user_id, username, basket):
     with open(file_path, 'w', encoding='utf-8') as file:
         json.dump(basket, file, ensure_ascii=False, indent=4)
 
-burgers = [('Ангус ШЕФ', 150),
-           ('Двойной ВОППЕР', 150),
-           ('Родео Бургер', 150),
-           ('Цезарь КИНГ', 140),
-           ('ЦЭНСИ', 160),
-           ('Баварский бургер', 130),
-           ('Черная МАМБА', 150),
-           ('Зеленный ФРЕШ', 120),
-           ('Двойной Чизбургер', 150)]
+burgers = ['Ангус ШЕФ',
+           'Двойной ВОППЕР',
+           'Родео Бургер',
+           'Цезарь КИНГ',
+           'ЦЭНСИ',
+           'Баварский бургер',
+           'Черная МАМБА',
+           'Зеленный ФРЕШ',
+           'Двойной Чизбургер']
 
-drinks = [('Coca-Cola', 100),
-          ('Sprite', 80),
-          ('Lipton', 90),
-          ('КЛУБНИЧНЫЙ ШЕЙК', 150),
-          ('ШОКОЛАДНЫЙ ШЕЙК', 150),
-          ('ВАНИЛЬНЫЙ ШЕЙК'), 150]
+drinks = ['Coca-Cola',
+          'Sprite',
+          'Lipton',
+          'КЛУБНИЧНЫЙ ШЕЙК',
+          'ШОКОЛАДНЫЙ ШЕЙК',
+          'ВАНИЛЬНЫЙ ШЕЙК']
 
-combos = [('Шримп ВОППЕР', 300),
-          ('Черная МАМБА', 250),
-          ('Двойной ВОППЕР М', 270),
-          ('Гамбургер Комбо', 280),
-          ('Беконайзер Комбо', 300),
-          ('Чизбургер Комбо', 250)]
+combos = ['Шримп ВОППЕР',
+         'Черная МАМБА',
+         'Двойной ВОППЕР М',
+         'Гамбургер Комбо',
+         'Беконайзер Комбо',
+         'Чизбургер Комбо']
 
-deserts = [('Сырники', 90),
-           ('Шоколадный Маффин', 50),
-           ('Пирожок с вишней', 100),
-           ('Карамельное мороженное', 120),
-           ('Клубничное мороженное', 100),
-           ('Пончики с кремом', 70)]
+deserts = ['Сырники',
+           'Шоколадный Маффин',
+           'Пирожок с вишней',
+           'Карамельное мороженное',
+           'Клубничное мороженное',
+           'Пончики с кремом']
 
-salads = [('Страчателла', 150),
-          ('Салат греческий', 120),
-          ('Салат Цезарь', 150)]
+salads = ['Страчателла',
+          'Салат греческий',
+          'Салат Цезарь']
 
-sous = [('Кетчуп', 40),
-        ('Сырный', 40),
-        ('Кисло-сладкий', 50),
-        ('Чесночный', 40),
-        ('Горчичный', 40),
-        ('Барбекю', 50)]
+sous = ['Кетчуп',
+        'Сырный',
+        'Кисло-сладкий',
+        'Чесночный',
+        'Горчичный',
+        'Барбекю']
+
 
 def back_button(call):
     keyboard = types.InlineKeyboardMarkup()
@@ -134,17 +134,11 @@ def menu_button():
     button_neiro_burger = types.InlineKeyboardButton("Нейро-бургеры", callback_data='neiro_burger')
     button_drinks = types.InlineKeyboardButton("Напитки", callback_data='drinks')
     button_combo = types.InlineKeyboardButton("Нейро-комбо", callback_data='combo')
-    button_deserts = types.InlineKeyboardButton("Десерты", callback_data='deserts')
-    button_salads = types.InlineKeyboardButton("Салаты", callback_data='salads')
-    button_sous = types.InlineKeyboardButton("Соусы", callback_data='sous')
     button_basket = types.InlineKeyboardButton("Корзина", callback_data='basket')
     back_button = types.InlineKeyboardButton("Назад", callback_data='back')
     keyboard.row(button_neiro_burger)
     keyboard.row(button_drinks)
     keyboard.row(button_combo)
-    keyboard.row(button_deserts)
-    keyboard.row(button_salads)
-    keyboard.row(button_sous)
     keyboard.row(button_basket)
     keyboard.row(back_button)
     return keyboard
@@ -152,16 +146,24 @@ def menu_button():
 def button_for_basket(item_name, quantity=1):
     keyboard = types.InlineKeyboardMarkup(row_width=3)
     minus_button = types.InlineKeyboardButton("-", callback_data=f'basket_remove_{item_name}')
-    basket_button = types.InlineKeyboardButton(f"{quantity} шт", callback_data='basket')
+    basket_button = types.InlineKeyboardButton(f"{quantity} шт", callback_data='noop')
     plus_button = types.InlineKeyboardButton("+", callback_data=f'basket_add_{item_name}')
-    back_button = types.InlineKeyboardButton("Назад", callback_data='menu')
+    back_button = types.InlineKeyboardButton("Назад", callback_data='neiro_burger')
     keyboard.add(minus_button, basket_button, plus_button)
+    keyboard.row(back_button)
+    return keyboard
+
+def button_for_burger(item_name):
+    keyboard = types.InlineKeyboardMarkup()
+    basket_button = types.InlineKeyboardButton("Корзина", callback_data='basket')
+    back_button = types.InlineKeyboardButton("Назад", callback_data='neiro_burger')
+    keyboard.row(basket_button)
     keyboard.row(back_button)
     return keyboard
 
 def menu_neiro_burger():
     keyboard = types.InlineKeyboardMarkup()
-    for burger, cost in burgers:
+    for burger in burgers:
         button = types.InlineKeyboardButton(burger, callback_data=burger)
         keyboard.row(button)
     button_basket = types.InlineKeyboardButton("Корзина", callback_data='basket')
@@ -172,7 +174,7 @@ def menu_neiro_burger():
 
 def menu_neiro_drinks():
     keyboard = types.InlineKeyboardMarkup()
-    for drink, cost in drinks:
+    for drink in drinks:
         button = types.InlineKeyboardButton(drink, callback_data=drink)
         keyboard.row(button)
     button_basket = types.InlineKeyboardButton("Корзина", callback_data='basket')
@@ -183,7 +185,7 @@ def menu_neiro_drinks():
 
 def menu_neiro_combo():
     keyboard = types.InlineKeyboardMarkup()
-    for combo, cost in combos:
+    for combo in combos:
         button = types.InlineKeyboardButton(combo, callback_data=combo)
         keyboard.row(button)
     button_basket = types.InlineKeyboardButton("Корзина", callback_data='basket')
@@ -194,8 +196,8 @@ def menu_neiro_combo():
 
 def menu_neiro_deserts():
     keyboard = types.InlineKeyboardMarkup()
-    for desert, cost in deserts:
-        button = types.InlineKeyboardButton(desert, callback_data=desert)
+    for desert in deserts:
+        button = types.InlineKeyboardButton(desert, callback_data=deserts)
         keyboard.row(button)
     button_basket = types.InlineKeyboardButton("Корзина", callback_data='basket')
     back_button = types.InlineKeyboardButton("Назад", callback_data='menu')
@@ -205,7 +207,7 @@ def menu_neiro_deserts():
 
 def menu_neiro_salads():
     keyboard = types.InlineKeyboardMarkup()
-    for salad, cost in salads:
+    for salad in salads:
         button = types.InlineKeyboardButton(salad, callback_data=salad)
         keyboard.row(button)
     button_basket = types.InlineKeyboardButton("Корзина", callback_data='basket')
@@ -216,7 +218,7 @@ def menu_neiro_salads():
 
 def menu_neiro_sous():
     keyboard = types.InlineKeyboardMarkup()
-    for souss, cost in sous:
+    for souss in sous:
         button = types.InlineKeyboardButton(souss, callback_data=souss)
         keyboard.row(button)
     button_basket = types.InlineKeyboardButton("Корзина", callback_data='basket')
@@ -241,9 +243,9 @@ def basket_button(user_id, username):
     user_basket = get_user_basket(user_id, username)
     if user_basket:
         for item, quantity in user_basket.items():
-            item_button = types.InlineKeyboardButton(f"{item}", callback_data=f'item_{item}')
-            keyboard.row(item_button)
-    back_button = types.InlineKeyboardButton("Назад", callback_data='menu')
+            burger_button = types.InlineKeyboardButton(f"{item}", callback_data=f'item_{item}')
+            keyboard.row(burger_button)
+    back_button = types.InlineKeyboardButton("Назад", callback_data='neiro_burger')
     keyboard.row(back_button)
     return keyboard
 
@@ -325,43 +327,43 @@ def handle_callback_query(call):
         media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text)
         bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=menu_tool_button())
         log(call, False, call.data)
-    elif call.data in burgers:
-        photo_path = f'img/burgers/{call.data}.png'
-        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=call.data)
-        quantity = get_user_basket(user_id, username).get(call.data, 0)
-        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_basket(call.data, quantity))
-        log(call, False, call.data)
-    elif call.data in drinks:
-        photo_path = f'img/drinks/{call.data}.png'
-        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=call.data)
-        quantity = get_user_basket(user_id, username).get(call.data, 0)
-        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_basket(call.data, quantity))
-        log(call, False, call.data)
-    elif call.data in combos:
-        photo_path = f'img/combos/{call.data}.png'
-        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=call.data)
-        quantity = get_user_basket(user_id, username).get(call.data, 0)
-        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_basket(call.data, quantity))
-        log(call, False, call.data)
-    elif call.data in deserts:
-        photo_path = f'img/deserts/{call.data}.png'
-        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=call.data)
-        quantity = get_user_basket(user_id, username).get(call.data, 0)
-        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_basket(call.data, quantity))
-        log(call, False, call.data)
-    elif call.data in salads:
-        photo_path = f'img/salads/{call.data}.png'
-        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=call.data)
-        quantity = get_user_basket(user_id, username).get(call.data, 0)
-        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_basket(call.data, quantity))
-        log(call, False, call.data)
-    elif call.data in sous:
-        photo_path = f'img/sous/{call.data}.png'
-        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=call.data)
-        quantity = get_user_basket(user_id, username).get(call.data, 0)
-        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_basket(call.data, quantity))
-        log(call, False, call.data)
-       
+    else:
+        if call.data in burgers:
+            photo_path = f'img/burgers/{call.data}.png'
+            media = types.InputMediaPhoto(open(photo_path, "rb"), caption=call.data)
+            quantity = get_user_basket(user_id, username).get(call.data, 0)
+            bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_basket(call.data, quantity))
+            log(call, False, call.data)
+        elif call.data in drinks:
+            photo_path = f'img/drinks/{call.data}.png'
+            media = types.InputMediaPhoto(open(photo_path, "rb"), caption=call.data)
+            quantity = get_user_basket(user_id, username).get(call.data, 0)
+            bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_basket(call.data, quantity))
+            log(call, False, call.data)
+        elif call.data in combos:
+            photo_path = f'img/combos/{call.data}.png'
+            media = types.InputMediaPhoto(open(photo_path, "rb"), caption=call.data)
+            quantity = get_user_basket(user_id, username).get(call.data, 0)
+            bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_basket(call.data, quantity))
+            log(call, False, call.data)
+        elif call.data in deserts:
+            photo_path = f'img/deserts/{call.data}.png'
+            media = types.InputMediaPhoto(open(photo_path, "rb"), caption=call.data)
+            quantity = get_user_basket(user_id, username).get(call.data, 0)
+            bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_basket(call.data, quantity))
+            log(call, False, call.data)
+        elif call.data in salads:
+            photo_path = f'img/salads/{call.data}.png'
+            media = types.InputMediaPhoto(open(photo_path, "rb"), caption=call.data)
+            quantity = get_user_basket(user_id, username).get(call.data, 0)
+            bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_basket(call.data, quantity))
+            log(call, False, call.data)
+        elif call.data in sous:
+            photo_path = f'img/sous/{call.data}.png'
+            media = types.InputMediaPhoto(open(photo_path, "rb"), caption=call.data)
+            quantity = get_user_basket(user_id, username).get(call.data, 0)
+            bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_basket(call.data, quantity))
+            log(call, False, call.data)
          
 
 if __name__ == '__main__':
