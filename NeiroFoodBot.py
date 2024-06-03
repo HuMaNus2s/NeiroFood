@@ -102,6 +102,8 @@ def menu_button():
     for category in rus_name_menu:
         button = types.InlineKeyboardButton(category, callback_data=category.lower())
         keyboard.row(button)
+    back_button = types.InlineKeyboardButton("Назад", callback_data='back')
+    keyboard.row(back_button)
     return keyboard
 
 # Обновление кнопок для каждого товара
