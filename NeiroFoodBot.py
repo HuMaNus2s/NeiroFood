@@ -5,6 +5,7 @@ import json
 import logging
 from datetime import datetime
 import pytz
+import time
 # Загрузка конфигурации
 file_for_config = open('config.json', 'r')
 config = json.load(file_for_config)
@@ -58,6 +59,13 @@ def save_user_basket(user_id, username, basket):
         os.makedirs('users')
     with open(file_path, 'w', encoding='utf-8') as file:
         json.dump(basket, file, ensure_ascii=False, indent=4)
+
+def clear_user_basket(user_id, username):
+    username = username.replace(" ", "_")
+    file_path = f'users/{user_id}_{username}.json'
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
 burgers = [('Ангус ШЕФ',150),
            ('Двойной ВОППЕР',150),
            ('Родео Бургер',150),
@@ -95,131 +103,107 @@ sous = [('Кетчуп',50),
         ('Горчичный',40),
         ('Барбекю',70)]
 
+def button(name, callback):
+    return types.InlineKeyboardButton(name, callback_data=callback)
+
 def back_button(call):
     keyboard = types.InlineKeyboardMarkup()
-    button_back = types.InlineKeyboardButton("Назад", callback_data=call)
-    keyboard.row(button_back)
+    keyboard.row(button("Назад",call))
     return keyboard
 def menu_tool_button():
     keyboard = types.InlineKeyboardMarkup()
-    button_about = types.InlineKeyboardButton("О нас", callback_data='about')
-    button_FAQ = types.InlineKeyboardButton("FAQ", callback_data='FAQ')
-    button_menu = types.InlineKeyboardButton("Меню", callback_data='menu')
-    button_basket = types.InlineKeyboardButton("Корзина", callback_data='basket')
-    keyboard.row(button_about, button_FAQ)
-    keyboard.row(button_menu, button_basket)
+    keyboard.row(button("О нас", "about"), button("FAQ", "FAQ"))
+    keyboard.row(button("Меню", "menu"), button("Корзина", "basket"))
     return keyboard
 def menu_button():
     keyboard = types.InlineKeyboardMarkup()
-    button_neiro_burger = types.InlineKeyboardButton("Нейро-бургеры", callback_data='neiro_burger')
-    button_drinks = types.InlineKeyboardButton("Напитки", callback_data='drinks')
-    button_combo = types.InlineKeyboardButton("Нейро-комбо", callback_data='combo')
-    button_deserts = types.InlineKeyboardButton("Десерты", callback_data='deserts')
-    button_salads = types.InlineKeyboardButton("Салаты", callback_data='salads')
-    button_sous = types.InlineKeyboardButton("Соусы", callback_data='sous')
-    button_basket = types.InlineKeyboardButton("Корзина", callback_data='basket')
-    back_button = types.InlineKeyboardButton("Назад", callback_data='back')
-    keyboard.row(button_neiro_burger)
-    keyboard.row(button_drinks)
-    keyboard.row(button_combo)
-    keyboard.row(button_deserts)
-    keyboard.row(button_salads)
-    keyboard.row(button_sous)
-    keyboard.row(button_basket)
-    keyboard.row(back_button)
+    keyboard.row(button("Нейро-бургеры","neiro_burger"))
+    keyboard.row(button("Напитки","drinks"))
+    keyboard.row(button("Нейро-комбо","combo"))
+    keyboard.row(button("Десерты","deserts"))
+    keyboard.row(button("Салаты","salads"))
+    keyboard.row(button("Соусы","sous"))
+    keyboard.row(button("Корзина","basket"))
+    keyboard.row(button("Назад","back"))
     return keyboard
 
 def button_for_basket(item_name, quantity=1):
-    category, price = find_category_and_price(call.data)
+    category, price = find_category_and_price(item_name)
     keyboard = types.InlineKeyboardMarkup(row_width=3)
-    minus_button = types.InlineKeyboardButton("-", callback_data=f'basket_remove_{item_name}')
-    basket_button = types.InlineKeyboardButton(f"{quantity} шт - {price} руб.", callback_data='basket')
-    plus_button = types.InlineKeyboardButton("+", callback_data=f'basket_add_{item_name}')
-    back_button = types.InlineKeyboardButton("Назад", callback_data='menu')
-    keyboard.add(minus_button, basket_button, plus_button)
-    keyboard.row(back_button)
+    keyboard.row(button(f"{item_name} - {price} руб","basket"))
+    keyboard.add(button("-",f"basket_remove_{item_name}"),
+                 button(f"{quantity} шт - {price * quantity} руб","basket"),
+                 button("+",f"basket_add_{item_name}"))
+    keyboard.row(button("Назад","basket"))
     return keyboard
 
 def menu_neiro_burger():
     keyboard = types.InlineKeyboardMarkup()
     for burger in burgers:
-        button = types.InlineKeyboardButton(burger[0], callback_data=burger[0])
-        keyboard.row(button)
-    button_basket = types.InlineKeyboardButton("Корзина", callback_data='basket')
-    back_button = types.InlineKeyboardButton("Назад", callback_data='menu')
-    keyboard.row(button_basket)
-    keyboard.row(back_button)
+        keyboard.row(button(burger[0],burger[0]))
+    keyboard.row(button("Корзина","basket"))
+    keyboard.row(button("Назад","menu"))
     return keyboard
 def menu_neiro_drinks():
     keyboard = types.InlineKeyboardMarkup()
     for drink in drinks:
-        button = types.InlineKeyboardButton(drink[0], callback_data=drink[0])
-        keyboard.row(button)
-    button_basket = types.InlineKeyboardButton("Корзина", callback_data='basket')
-    back_button = types.InlineKeyboardButton("Назад", callback_data='menu')
-    keyboard.row(button_basket)
-    keyboard.row(back_button)
+        keyboard.row(button(drink[0],drink[0]))
+    keyboard.row(button("Корзина","basket"))
+    keyboard.row(button("Назад","menu"))
     return keyboard
 def menu_neiro_combo():
     keyboard = types.InlineKeyboardMarkup()
     for combo in combos:
-        button = types.InlineKeyboardButton(combo[0], callback_data=combo[0])
-        keyboard.row(button)
-    button_basket = types.InlineKeyboardButton("Корзина", callback_data='basket')
-    back_button = types.InlineKeyboardButton("Назад", callback_data='menu')
-    keyboard.row(button_basket)
-    keyboard.row(back_button)
+        keyboard.row(button(combo[0],combo[0]))
+    keyboard.row(button("Корзина","basket"))
+    keyboard.row(button("Назад","menu"))
     return keyboard
 def menu_neiro_deserts():
     keyboard = types.InlineKeyboardMarkup()
     for desert in deserts:
-        button = types.InlineKeyboardButton(desert[0], callback_data=desert[0])
-        keyboard.row(button)
-    button_basket = types.InlineKeyboardButton("Корзина", callback_data='basket')
-    back_button = types.InlineKeyboardButton("Назад", callback_data='menu')
-    keyboard.row(button_basket)
-    keyboard.row(back_button)
+        keyboard.row(button(desert[0],desert[0]))
+    keyboard.row(button("Корзина","basket"))
+    keyboard.row(button("Назад","menu"))
     return keyboard
 def menu_neiro_salads():
     keyboard = types.InlineKeyboardMarkup()
     for salad in salads:
-        button = types.InlineKeyboardButton(salad[0], callback_data=salad[0])
-        keyboard.row(button)
-    button_basket = types.InlineKeyboardButton("Корзина", callback_data='basket')
-    back_button = types.InlineKeyboardButton("Назад", callback_data='menu')
-    keyboard.row(button_basket)
-    keyboard.row(back_button)
+        keyboard.row(button(salad[0],salad[0]))
+    keyboard.row(button("Корзина","basket"))
+    keyboard.row(button("Назад","menu"))
     return keyboard
 def menu_neiro_sous():
     keyboard = types.InlineKeyboardMarkup()
     for souss in sous:
-        button = types.InlineKeyboardButton(souss[0], callback_data=souss[0])
-        keyboard.row(button)
-    button_basket = types.InlineKeyboardButton("Корзина", callback_data='basket')
-    back_button = types.InlineKeyboardButton("Назад", callback_data='menu')
-    keyboard.row(button_basket)
-    keyboard.row(back_button)
+        keyboard.row(button(souss[0],souss[0]))
+    keyboard.row(button("Корзина","basket"))
+    keyboard.row(button("Назад","menu"))
     return keyboard
 def display_basket(user_id, username):
     user_basket = get_user_basket(user_id, username)
+    total_cost = 0
     if user_basket:
-        basket_text = "Ваша корзина:\n\n"
+        basket_text = "*Ваша корзина:*\n\n"
         for item, quantity in user_basket.items():
-            basket_text += f"{item}: {quantity} шт.\n"
-        basket_text += "\nВы можете добавить или удалить бургеры."
+            _, price = find_category_and_price(item)
+            item_cost = price * quantity
+            total_cost += item_cost
+            basket_text += f"*{item}: {item_cost} руб* | ({quantity} шт x {price} руб)\n"
+        basket_text += f"\nОбщая стоимость: *{total_cost}* руб"
+        basket_text += "\nВы можете добавить или удалить товары."
     else:
-        basket_text = "Ваша корзина пуста."
+        basket_text = "*Ваша корзина пуста.*"
     return basket_text
 def basket_button(user_id, username):
     keyboard = types.InlineKeyboardMarkup()
     user_basket = get_user_basket(user_id, username)
     if user_basket:
         for item, quantity in user_basket.items():
-            item_button = types.InlineKeyboardButton(f"{item}", callback_data=f'item_{item}')
-            keyboard.row(item_button)
-    back_button = types.InlineKeyboardButton("Назад", callback_data='menu')
-    keyboard.row(back_button)
+            keyboard.row(button(f"{item}",f"item_{item}"))
+        keyboard.row(button("Очистить корзину","clear_basket"))
+    keyboard.row(button("Назад","menu"))
     return keyboard
+
 
 def find_category_and_price(call_data):
     all_categories = {
@@ -272,7 +256,7 @@ def handle_callback_query(call):
             text = action[1]
             photo_path = action[2]
             reply_markup = action[3]
-            media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text)
+            media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
             bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=reply_markup)
             log(call, False, call.data)
 @bot.callback_query_handler(func=lambda call: True)
@@ -299,30 +283,39 @@ def handle_callback_query(call):
         quantity = get_user_basket(user_id, username).get(item_name, 0)
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=button_for_basket(item_name, quantity))
         log(call, False, call.data)
+
     elif call.data == 'basket':
-            text = display_basket(user_id, username)
-            photo_path = 'img/LogoNeiroFood.jpg'
-            media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text)
-            bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=basket_button(user_id, username))
-            log(call, False, call.data)
+        text = display_basket(user_id, username)
+        photo_path = 'img/LogoNeiroFood.jpg'
+        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
+        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=basket_button(user_id, username))
+        log(call, False, call.data)
+
+    elif call.data == 'clear_basket':
+        clear_user_basket(user_id, username)
+        text = "*Ваша корзина была очищена.*"
+        photo_path = 'img/LogoNeiroFood.jpg'
+        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
+        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=basket_button(user_id, username))
+        log(call, False, call.data)
+
     elif call.data == 'back':
         text = '''Привет! Я ваш личный ассистент NeiroFood!'''
         photo_path = 'img/LogoNeiroFood.jpg'
-        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text)
+        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
         bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=menu_tool_button())
         log(call, False, call.data)
     if category:
         photo_path = f'img/{category}/{call.data}.png'
         try:
-            media = types.InputMediaPhoto(open(photo_path, "rb"), caption=f"{call.data} - {price} руб.")
+            media = types.InputMediaPhoto(open(photo_path, "rb"), caption=f"{call.data} - {price} руб", parse_mode="Markdown")
             quantity = get_user_basket(user_id, username).get(call.data, 0)
             bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_basket(call.data, quantity))
             log(call, False, call.data)
         except Exception as e:
             print(f"Ошибка при открытии файла: {e}")
     else:
-        # обработка случая, когда элемент не найден
-        bot.answer_callback_query(call.id, "Элемент не найден.")
+        pass
     
 
 
