@@ -160,14 +160,17 @@ def menu_button():
     return keyboard
 
 def button_for_basket(item_name, quantity=1):
-    category, price,_ = find_category_and_price(item_name)
+    category, price, _ = find_category_and_price(item_name)
+    print(item_name)
     keyboard = types.InlineKeyboardMarkup(row_width=3)
-    keyboard.row(button(f"{item_name} - {price} руб","basket"))
-    keyboard.add(button("-",f"basket_remove_{item_name}"),
-                 button(f"{quantity} шт - {price * quantity} руб","basket"),
-                 button("+",f"basket_add_{item_name}"))
-    keyboard.add(button("Удалить из корзины","clear_item_in_basket"),button("Назад","basket"))
+    keyboard.row(button(f"{item_name} - {price} руб", "basket"))
+    keyboard.add(button("-", f"basket_remove_{item_name}"),
+                 button(f"{quantity} шт - {price * quantity} руб", "basket"),
+                 button("+", f"basket_add_{item_name}"))
+    keyboard.add(button("Удалить из корзины", f"clear_item_in_basket_{item_name}"),
+                 button("Назад", "basket"))
     return keyboard
+
 
 def menu_neiro_burger():
     keyboard = types.InlineKeyboardMarkup()
@@ -211,6 +214,7 @@ def menu_neiro_sous():
     keyboard.row(button("Корзина","basket"))
     keyboard.row(button("Назад","menu"))
     return keyboard
+
 def display_basket(user_id, username):
     user_basket = get_user_basket(user_id, username)
     total_cost = 0
@@ -351,8 +355,10 @@ def handle_callback_query(call):
         media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
         bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=basket_button(user_id, username))
         log(call, False, call.data)
-    
-
+    elif call.data.startswith('clear_item_in_basket_'):
+        print(call.data)
+        item_name = call.data.split('_')[4]
+        print(item_name)
 
     elif call.data == 'back':
         text = '''Привет! Я ваш личный ассистент NeiroFood!'''
