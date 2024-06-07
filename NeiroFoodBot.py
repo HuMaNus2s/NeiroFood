@@ -161,7 +161,6 @@ def menu_button():
 
 def button_for_basket(item_name, quantity=1):
     category, price, _ = find_category_and_price(item_name)
-    print(item_name)
     keyboard = types.InlineKeyboardMarkup(row_width=3)
     keyboard.row(button(f"{item_name} - {price} руб", "basket"))
     keyboard.add(button("-", f"basket_remove_{item_name}"),
@@ -214,14 +213,22 @@ def menu_neiro_sous():
     keyboard.row(button("Корзина","basket"))
     keyboard.row(button("Назад","menu"))
     return keyboard
-
 def display_basket(user_id, username):
     user_basket = get_user_basket(user_id, username)
     total_cost = 0
     if user_basket:
         basket_text = "*Ваша корзина:*\n\n"
         for item, quantity in user_basket.items():
-            _, price,_ = find_category_and_price(item)
+            category, price, _ = find_category_and_price(item)
+            
+            # Проверка значений, возвращаемых функцией find_category_and_price
+            print(f"Item: {item}, Category: {category}, Price: {price}")
+            
+            if price is None:
+                # Если цена None, выведем сообщение об ошибке
+                print(f"Error: Price for item '{item}' is None")
+                continue  # Пропускаем этот элемент
+            
             item_cost = price * quantity
             total_cost += item_cost
             basket_text += f"*{item}: {item_cost} руб* | ({quantity} шт x {price} руб)\n"
@@ -230,16 +237,19 @@ def display_basket(user_id, username):
     else:
         basket_text = "*Ваша корзина пуста.*"
     return basket_text
+
 def basket_button(user_id, username):
-    keyboard = types.InlineKeyboardMarkup()
+    keyboard = types.InlineKeyboardMarkup(row_width=3)
     user_basket = get_user_basket(user_id, username)
     if user_basket:
         for item, quantity in user_basket.items():
-            keyboard.row(button(f"{item}",f"item_{item}"))
-        keyboard.add(button("Очистить корзину","clear_basket"),button("Назад","menu"))
+            # Заменяем пробелы в названии товара на подчеркивания
+            item_safe = item.replace(' ', '_')
+            keyboard.row(button(f"{item}", f"item_{item_safe}"))
+        keyboard.add(button("Очистить корзину", "clear_basket"), button("Назад", "menu"))
     else:
-        keyboard.row(button("Добавить товар в корзину","menu"))
-        keyboard.row(button("Назад","back"))
+        keyboard.row(button("Добавить товар в корзину", "menu"))
+        keyboard.row(button("Назад", "back"))
     return keyboard
 
 
@@ -356,9 +366,18 @@ def handle_callback_query(call):
         bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=basket_button(user_id, username))
         log(call, False, call.data)
     elif call.data.startswith('clear_item_in_basket_'):
-        print(call.data)
-        item_name = call.data.split('_')[4]
-        print(item_name)
+        item_name_safe = call.data.split('_', 4)[4]
+        # Восстанавливаем пробелы в названии товара
+        item_name = item_name_safe.replace('_', ' ')
+        clear_item_in_basket(user_id, username, item_name)
+        text = f"*Товар {item_name} был удалён из корзины*"
+        photo_path = 'img/LogoNeiroFood.jpg'
+        print(basket_button(user_id, username))
+        print(user_id)
+        print(username)
+        media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
+        bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=basket_button(user_id, username))
+        log(call, False, call.data)
 
     elif call.data == 'back':
         text = '''Привет! Я ваш личный ассистент NeiroFood!'''
