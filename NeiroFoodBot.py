@@ -69,22 +69,18 @@ def clear_item_in_basket(user_id, username, item_name):
     # Подготовка имени пользователя для использования в качестве части имени файла
     username = username.replace(" ", "_")
     file_path = f'users/{user_id}_{username}.json'
-    
-    # Проверка наличия файла корзины пользователя
-    if os.path.exists(file_path):
-        # Загрузка корзины пользователя из файла JSON
-        with open(file_path, 'r') as file:
-            user_basket = json.load(file)
-        
-        # Удаление указанного товара из корзины, если он там есть
-        if item_name in user_basket:
-            del user_basket[item_name]
-        
-        # Сохранение обновленной корзины обратно в файл JSON
-        with open(file_path, 'w') as file:
-            json.dump(user_basket, file)
+    with open(file_path, 'r', encoding='utf-8') as file:
+        data = json.load(file)
+    # Удаление элемента, если он присутствует
+    if item_name in data:
+        del data[item_name]
+        print(f"{username} удалил товар '{item_name}' из корзины.")
     else:
-        print("Файл корзины не найден.")
+        print(f"{username}, элемент '{item_name}' не найден в корзине.")
+
+    # Запись обновленного содержимого обратно в файл с указанием кодировки UTF-8
+    with open(file_path, 'w', encoding='utf-8') as file:
+        json.dump(data, file, indent=4, ensure_ascii=False)
 burgers = [
     ('Ангус ШЕФ', 150, 'Сочный бургер с котлетой из говядины Ангус, свежими овощами и фирменным соусом.'),
     ('Двойной ВОППЕР', 150, 'Двойное удовольствие от двух котлет и свежих овощей, с оригинальным соусом.'),
@@ -159,15 +155,19 @@ def menu_button():
     keyboard.row(button("Назад","back"))
     return keyboard
 
-def button_for_basket(item_name, quantity=1):
-    category, price, _ = find_category_and_price(item_name)
+def button_for_basket(itemname, quantity=1):
+    category, price, _ = find_category_and_price(itemname)
+    
+    # Проверка цены на None
+    if price is None:
+        raise ValueError(f"Price for item '{itemname}' is None")
     keyboard = types.InlineKeyboardMarkup(row_width=3)
-    keyboard.row(button(f"{item_name} - {price} руб", "basket"))
-    keyboard.add(button("-", f"basket_remove_{item_name}"),
+    keyboard.row(button(f"{itemname} - {price} руб", "basket"))
+    keyboard.add(button("-", f"basket_remove_{itemname}"),
                  button(f"{quantity} шт - {price * quantity} руб", "basket"),
-                 button("+", f"basket_add_{item_name}"))
-    keyboard.add(button("Удалить из корзины", f"clear_item_in_basket_{item_name}"),
-                 button("Назад", "basket"))
+                 button("+", f"basket_add_{itemname}"))
+    keyboard.add(button("Удалить из корзины", f"clear_item_in_basket_{itemname}"), button("Назад", "basket"))
+    
     return keyboard
 
 
@@ -246,9 +246,10 @@ def basket_button(user_id, username):
             # Заменяем пробелы в названии товара на подчеркивания
             item_safe = item.replace(' ', '_')
             keyboard.row(button(f"{item}", f"item_{item_safe}"))
+        keyboard.row(button("Добавить товары в корзину", "menu"))
         keyboard.add(button("Очистить корзину", "clear_basket"), button("Назад", "menu"))
     else:
-        keyboard.row(button("Добавить товар в корзину", "menu"))
+        keyboard.row(button("Добавить товары в корзину", "menu"))
         keyboard.row(button("Назад", "back"))
     return keyboard
 
@@ -346,7 +347,9 @@ def handle_callback_query(call):
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=button_for_basket(item_name, user_basket.get(item_name, 0)))
         log(call, False, call.data)
     elif call.data.startswith('item_'):
-        item_name = call.data.split('_')[1]
+        print(call.data)
+        item_name = call.data.split('_',1)[1].replace("_"," ")
+        print(item_name)
         quantity = get_user_basket(user_id, username).get(item_name, 0)
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=button_for_basket(item_name, quantity))
         log(call, False, call.data)
@@ -362,19 +365,16 @@ def handle_callback_query(call):
         clear_user_basket(user_id, username)
         text = "*Ваша корзина была очищена.*"
         photo_path = 'img/LogoNeiroFood.jpg'
+        print(basket_button(user_id, username))
         media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
         bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=basket_button(user_id, username))
         log(call, False, call.data)
     elif call.data.startswith('clear_item_in_basket_'):
-        item_name_safe = call.data.split('_', 4)[4]
-        # Восстанавливаем пробелы в названии товара
-        item_name = item_name_safe.replace('_', ' ')
+        item_name = call.data.split('_', 4)[4].replace('_', ' ')
         clear_item_in_basket(user_id, username, item_name)
         text = f"*Товар {item_name} был удалён из корзины*"
         photo_path = 'img/LogoNeiroFood.jpg'
         print(basket_button(user_id, username))
-        print(user_id)
-        print(username)
         media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
         bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=basket_button(user_id, username))
         log(call, False, call.data)
