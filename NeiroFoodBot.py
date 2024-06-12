@@ -3,6 +3,7 @@ import telebot
 from telebot import types
 import json
 import logging
+from logging.handlers import RotatingFileHandler
 from datetime import datetime
 import pytz
 import time
@@ -44,31 +45,38 @@ def on_ready():
     except Exception as e:
         printt(f"Бот аварийно прекратил работу: {e}")
         logger.critical(f'{e}')
-def log(message=None, error=False, button=None):
+def log(message=None, error=False, button=None, purchase=None):
     try:
-        if message.from_user.username == None:
-            user = message.from_user.id
-        else:
-            user = message.from_user.username
-        if not error and not button:
+        user = message.from_user.username if message.from_user.username else message.from_user.id       
+        if not error and not button and not purchase:
             printt(f'{user} использовал команду <{message.text}>')
             logger.info(f'{user} использовал команду <{message.text}>')
         elif not error and button:
-            if button.split("_")[1] == "add":
-                printt(f'{user} добавил в корзину <{button.split("_")[2]}>')
-                logger.info(f'{user} добавил в корзину <{button.split("_")[2]}>')
-            elif button.split("_")[1] == "remove":
-                printt(f'{user} удалил из корзины <{button.split("_")[2]}>')
-                logger.info(f'{user} удалил из корзины <{button.split("_")[2]}>')
+            button_parts = button.split("_")
+            if len(button_parts) >= 3:
+                action = button_parts[1]
+                if action == "add":
+                    printt(f'{user} добавил в корзину <{button_parts[2]}>')
+                    logger.info(f'{user} добавил в корзину <{button_parts[2]}>')
+                elif action == "remove":
+                    printt(f'{user} удалил из корзины <{button_parts[2]}>')
+                    logger.info(f'{user} удалил из корзины <{button_parts[2]}>')
+                else:
+                    printt(f'{user} использовал кнопку <{button}>')
+                    logger.info(f'{user} использовал кнопку <{button}>')
             else:
                 printt(f'{user} использовал кнопку <{button}>')
                 logger.info(f'{user} использовал кнопку <{button}>')
+        elif not error and purchase:
+            printt(f'{user} успешно завершил покупку <{purchase}>')
+            logger.info(f'{user} успешно завершил покупку <{purchase}>')
         else:
             printt(f'Неизвестная команда <{message.text}>')
             logger.warning(f'Неизвестная команда <{message.text}>')
     except Exception as e:
         printt(f"Ошибка при формировании логов: {e}")
         logger.error(f'Ошибка при формировании логов: {e}')
+
 # Работа с корзинами пользователей
 
 def get_user_basket(user_id, username):
@@ -78,15 +86,13 @@ def get_user_basket(user_id, username):
         else:
             username = username.replace(" ", "_")
             file_path = f'users/{user_id}_{username}.json'
-        
-        # Проверка и создание каталога, если он не существует
         if not os.path.exists('users'):
             os.makedirs('users')
-
-        # Если файл не существует, создаем его с пустым содержимым
         if not os.path.exists(file_path):
             with open(file_path, 'w', encoding='utf-8') as file:
                 json.dump({}, file, ensure_ascii=False, indent=4)
+            printt(f'Новый пользователь: {user_id}_{username}.json')
+            logger.info(f'Новый пользователь: {user_id}_{username}.json')
         
         # Чтение содержимого файла
         with open(file_path, 'r', encoding='utf-8') as file:
@@ -252,7 +258,7 @@ def button_for_basket(item_name, quantity=1):
         keyboard.add(button("-", f"basket_remove_{item_name}"),
                      button(f"{quantity} шт - {price * quantity} руб", "basket"),
                      button("+", f"basket_add_{item_name}"))
-        keyboard.row(button("Ещё товары", "menu"),button("Оформить покупку", f"buy_{item_name}"), button("Корзина", "basket"))
+        keyboard.row(button("Ещё товары", "menu"), button("Оформить покупку", f"buy_{item_name}"), button("Корзина", "basket"))
         keyboard.add(button("Удалить из корзины", f"clear_item_in_basket_{item_name}"), button("Назад", "basket")) 
         return keyboard
     except Exception as e:
@@ -432,7 +438,7 @@ def handle_start(message):
 def handle_help(message):
     try:
         bot.reply_to(message, f"Список доступных команд:\n\n{command_name(0)} - приветствие\n{command_name(1)} - справка")
-        log(message)
+        log(message=message)
     except Exception as e:
         printt(f"Ошибка при использовании команды help: {e}")
         logger.error(f'{e}')
@@ -449,7 +455,7 @@ def handle_callback_query(call):
                 reply_markup = action[3]
                 media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
                 bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=reply_markup)
-                log(call, False, call.data)
+                log(message=call, error=False, button=call.data)
     except Exception as e:
         printt(f"Ошибка вызова {call}: {e}")
         logger.error(f'{e}')
@@ -472,19 +478,19 @@ def handle_callback_query(call):
                         del user_basket[item_name]
             save_user_basket(user_id, username, user_basket)
             bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=button_for_basket(item_name, user_basket.get(item_name, 0)))
-            log(call, False, call.data)
+            log(message=call, error=False, button=call.data)
         elif call.data.startswith('item_'):
             item_name = call.data.split('_',1)[1].replace("_"," ")
             quantity = get_user_basket(user_id, username).get(item_name, 0)
             bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=button_for_basket(item_name, quantity))
-            log(call, False, call.data)
+            log(message=call, error=False, button=call.data)
 
         elif call.data == 'basket':
             text = display_basket(user_id, username)
             photo_path = 'img/LogoNeiroFood.jpg'
             media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
             bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=basket_button(user_id, username))
-            log(call, False, call.data)
+            log(message=call, error=False, button=call.data)
 
         elif call.data == 'clear_basket':
             clear_user_basket(user_id, username)
@@ -493,7 +499,7 @@ def handle_callback_query(call):
             print(basket_button(user_id, username))
             media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
             bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=basket_button(user_id, username))
-            log(call, False, call.data)
+            log(message=call, error=False, button=call.data)
         elif call.data.startswith('clear_item_in_basket_'):
             item_name = call.data.split('_', 4)[4].replace('_', ' ')
             clear_item_in_basket(user_id, username, item_name)
@@ -502,14 +508,14 @@ def handle_callback_query(call):
             print(basket_button(user_id, username))
             media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
             bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=basket_button(user_id, username))
-            log(call, False, call.data)
+            log(message=call, error=False, button=call.data)
 
         elif call.data == 'back':
             text = '''Привет! Я ваш личный ассистент NeiroFood!'''
             photo_path = 'img/LogoNeiroFood.jpg'
             media = types.InputMediaPhoto(open(photo_path, "rb"), caption=text, parse_mode="Markdown")
             bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=menu_tool_button())
-            log(call, False, call.data)
+            log(message=call, error=False, button=call.data)
             
         if call.data == "buy_all":
             user_basket = get_user_basket(user_id, username)
@@ -528,7 +534,7 @@ def handle_callback_query(call):
                 bot.delete_message(call.message.chat.id, call.message.message_id)
             else:
                 bot.answer_callback_query(call.id, "Ваша корзина пуста.")
-            log(call, False, call.data)
+            log(message=call, error=False, button=call.data)
             return
         if call.data.startswith("buy_"):
             item_name = call.data.split("_", 1)[1]
@@ -551,7 +557,7 @@ def handle_callback_query(call):
                 bot.delete_message(call.message.chat.id, call.message.message_id)
             else:
                 bot.answer_callback_query(call.id, "Товар не найден в корзине.")
-            log(call, False, call.data)
+            log(message=call, error=False, button=call.data)
             return
 
         if category:
@@ -560,7 +566,7 @@ def handle_callback_query(call):
                 media = types.InputMediaPhoto(open(photo_path, "rb"), caption=f"*{call.data}* — *{price} руб*\n{description}", parse_mode="Markdown")
                 quantity = get_user_basket(user_id, username).get(call.data, 0)
                 bot.edit_message_media(media, call.message.chat.id, call.message.id, reply_markup=button_for_basket(call.data, quantity))
-                log(call, False, call.data)
+                log(message=call, error=False, button=call.data)
             except Exception as e:
                 print(f"Ошибка при открытии файла: {e}")
                 logger.error(f'{e}')
@@ -592,7 +598,8 @@ def process_successful_payment(message):
             item_id = payload.split("_")[2]
             handle_start(message)
             clear_item_in_basket(user_id, username, item_id)
-        log(message, True, payload)
+        
+        log(message=message, purchase=payload)
     except Exception as e:
         printt(f"Ошибка при постобработке заказа: {e}")
         logger.error(f'{e}')
